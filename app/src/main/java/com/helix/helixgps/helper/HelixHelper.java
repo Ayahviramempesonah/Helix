@@ -19,6 +19,8 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.UUID;
 
+ import static android.provider.Settings.Secure.ANDROID_ID;
+
 @SuppressLint("SimpleDateFormat")
  public class HelixHelper {
     private static final int DEBUG = 1;
@@ -71,40 +73,6 @@ import java.util.UUID;
     }
 
 
-    public static String getDeviceId(Context context) {
-        String imei = null;
-        TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O  && Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
-            imei = telephonyManager.getImei();
-        }
-        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.O){
-            imei = telephonyManager.getDeviceId();
-        }
-        if(Build.VERSION.SDK_INT > Build.VERSION_CODES.P ){
-            imei = Settings.Secure.getString(
-                    contentResolver,
-                    Settings.Secure.ANDROID_ID  );
-        }
-        return imei;
-    }
-
-    public static String getDeviceUUID(Context context) {
-        final TelephonyManager tm = (TelephonyManager) context
-                .getSystemService(Context.TELEPHONY_SERVICE);
-
-        final String tmDevice, tmSerial, androidId;
-        tmDevice = "" + tm.getDeviceId();
-        tmSerial = "" + tm.getSimSerialNumber();
-        androidId = ""
-                + Secure.getString(context.getContentResolver(),
-                Secure.ANDROID_ID);
-
-
-        UUID deviceUuid = new UUID(androidId.hashCode(),
-                ((long) tmDevice.hashCode() << 32) | tmSerial.hashCode());
-        return deviceUuid.toString();
-
-    }
 
 
 
