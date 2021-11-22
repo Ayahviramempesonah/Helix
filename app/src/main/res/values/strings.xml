@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">HelixGPS</string>
-    <string name="title_activity_maps">MapsActivity</string>
+    <string name="title_activity_maps">HelixGPS</string>
+    <string name="not_allowed">Mock Location Not Allowed</string>
 </resources>

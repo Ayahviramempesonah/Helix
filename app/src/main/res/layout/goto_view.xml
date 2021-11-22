@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:layout_marginTop="50.0dip"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/textField_latitude"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="10dp"
+        android:layout_marginRight="10dp"
+        android:hint="Latitude"
+        android:textColorHint="#ffffff"
+        app:boxBackgroundColor="#2e3047"
+        app:boxBackgroundMode="outline"
+        app:boxStrokeColor="#ff0000" >
+
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/et_lat"
+             android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+             android:background="@drawable/rounded"
+
+            android:textColor="#ffffff" />
+
+    </com.google.android.material.textfield.TextInputLayout>
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/textField"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="10dp"
+        android:layout_marginRight="10dp"
+        android:hint="Longitude"
+        android:textColorHint="#ffffff"
+        app:boxBackgroundColor="#2e3047"
+        app:boxBackgroundMode="outline"
+        app:boxStrokeColor="#ff0000" >
+
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/et_lang"
+             android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/rounded"
+            android:textColor="#ffffff" />
+
+    </com.google.android.material.textfield.TextInputLayout>
+
+</LinearLayout>

@@ -6,8 +6,6 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.ACCESS_MOCK_LOCATION"
-        tools:ignore="MockLocation,ProtectedPermissions" />
 
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
@@ -38,7 +36,7 @@
              You can define the keys for the debug and release targets in src/debug/ and src/release/.
         -->
         <activity
-            android:name=".MapsActivity"
+            android:name=".activity.MapsActivity"
             android:exported="true"
             android:label="@string/title_activity_maps">
             <intent-filter>
@@ -47,12 +45,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-<service android:enabled="true" android:name=".services.Ngentot" android:exported="false"/>
+        <activity android:name=".activity.SettingActivity" android:theme="@style/Theme.AppCompat.Dialog.Alert"/>
+        <service android:enabled="true" android:name=".services.Ngentot" android:exported="false"/>
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyDwtU5heCM3lmJBYSNUULoegOzqkLcU2R8" />
     </application>
 
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
 </manifest>

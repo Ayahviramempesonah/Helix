@@ -1,6 +1,5 @@
 package com.helix.helixgps.services;
 
-import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -10,35 +9,31 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationManager;
-import android.location.provider.ProviderProperties;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.SystemClock;
-import android.preference.PreferenceManager;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
-import com.helix.helixgps.MapsActivity;
+import com.helix.helixgps.activity.MapsActivity;
+import com.helix.helixgps.helper.HelixHelper;
 import com.helix.helixgps.helper.SessionManager;
 
-import java.io.File;
-import java.security.Provider;
 import java.util.Random;
 
 import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
-import androidx.core.app.ActivityCompat;
+import io.michaelrocks.paranoid.Obfuscate;
 
 import static android.app.PendingIntent.FLAG_UPDATE_CURRENT;
 
+@Obfuscate
 public class Ngentot extends Service {
     private FusedLocationProviderClient fusedLocationProviderClient;
     SessionManager sesi;
@@ -48,28 +43,17 @@ public class Ngentot extends Service {
     private PendingIntent mPendingIntent;
     private String lat, lng;
     private Random random;
+    private HelixHelper help;
 
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
         return null;
     }
-
-    @SuppressLint("WrongConstant")
-    @RequiresApi(api = Build.VERSION_CODES.S)
-    public void onCreate() {
-        super.onCreate();
-        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
-        sesi = new SessionManager(this);
-        random = new Random();
-        locationManager = ((LocationManager) getSystemService(LOCATION_SERVICE));
-        locationManager.addTestProvider("gps", true, false, false, false, false, true, true, ProviderProperties.POWER_USAGE_LOW, ProviderProperties.ACCURACY_FINE);
-
-        locationManager.setTestProviderEnabled("gps", true);
-        locationManager.setTestProviderStatus("gps", 2, null, System.currentTimeMillis());
+    void addProvider(){
 
         try {
-             if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
+            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
                 try {
                     // @throws IllegalArgumentException if a provider with the given name already exists
                     locationManager.addTestProvider("network", true, false, false, false, true, true, true, 1, 1);
@@ -94,11 +78,10 @@ public class Ngentot extends Service {
                 } catch (IllegalArgumentException e) {
                     locationManager.addTestProvider(LocationManager.GPS_PROVIDER, true, false, false, false, true, true, true, 1, 1);
                 }
-//android dibawah 1000000
             } else {
                 try {
                     // @throws IllegalArgumentException if a provider with the given name already exists
-                    locationManager.addTestProvider("network", true, false, false, false, true, true, true, 2,1);
+                    locationManager.addTestProvider("network", true, false, false, false, true, true, true, 0, 5);
                 } catch (IllegalArgumentException e) {
                 }
                 try {
@@ -106,11 +89,11 @@ public class Ngentot extends Service {
                     locationManager.setTestProviderEnabled("network", true);
                     locationManager.setTestProviderStatus("network", 2, null, System.currentTimeMillis());
                 } catch (IllegalArgumentException e) {
-                    locationManager.addTestProvider("network", true, false, false, false, true, true, true, 2,1);
+                    locationManager.addTestProvider("network", true, false, false, false, true, true, true, 0, 5);
                 }
                 try {
                     // @throws IllegalArgumentException if a provider with the given name already exists
-                    locationManager.addTestProvider(LocationManager.GPS_PROVIDER, true, false, false, false, true, true, true, 2,1);
+                    locationManager.addTestProvider(LocationManager.GPS_PROVIDER, true, false, false, false, true, true, true, 0, 5);
                 } catch (IllegalArgumentException e) {
                 }
                 try {
@@ -118,13 +101,22 @@ public class Ngentot extends Service {
                     locationManager.setTestProviderEnabled(LocationManager.GPS_PROVIDER, true);
                     locationManager.setTestProviderStatus("gps", 2, null, System.currentTimeMillis());
                 } catch (IllegalArgumentException e) {
-                    locationManager.addTestProvider(LocationManager.GPS_PROVIDER, true, false, false, false, true, true, true, 2,1);
+                    locationManager.addTestProvider(LocationManager.GPS_PROVIDER, true, false, false, false, true, true, true, 0, 5);
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-         handler = new Handler(Looper.getMainLooper());
+    }
+    public void onCreate() {
+        super.onCreate();
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+        sesi = new SessionManager(this);
+         help = new HelixHelper();
+        random = new Random();
+        locationManager = ((LocationManager) getSystemService(LOCATION_SERVICE));
+        addProvider();
+        handler = new Handler(Looper.getMainLooper());
     }
 
     public int onStartCommand(Intent paramIntent, int paramInt1, int paramInt2) {
@@ -132,8 +124,10 @@ public class Ngentot extends Service {
 
         startMock = true;
         new LocationUpdateTask().start();
-
         mPendingIntent = PendingIntent.getActivity(this, 0, new Intent(this, MapsActivity.class), FLAG_UPDATE_CURRENT);
+        fusedLocationProviderClient.removeLocationUpdates(mPendingIntent);
+        LocationServices.getFusedLocationProviderClient(this).removeLocationUpdates(mLocationCallback);
+
 
         Notification.Builder notificationBuilder = new Notification.Builder(this);
         notificationBuilder.setContentIntent(mPendingIntent);
@@ -178,22 +172,35 @@ public class Ngentot extends Service {
         localLocation1.setLongitude(lng);
 
         localLocation1.setAccuracy(randomAcc());
-        localLocation1.setSpeed(randomSpeed());
+        localLocation1.setSpeed(0.2F);
 
-        localLocation1.setBearing(1);
+        localLocation1.setBearing(randomBearing());
         localLocation1.setAltitude(1);
-        localLocation1.setBearing(randomAcc());
-        localLocation1.setBearingAccuracyDegrees(Float.parseFloat(String.valueOf(randomAcc())));
+         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            localLocation1.setBearingAccuracyDegrees(Float.parseFloat(String.valueOf(randomBearing())));
+        }
 
         localLocation1.setTime(System.currentTimeMillis());
 
-        localLocation1.setElapsedRealtimeNanos(SystemClock.elapsedRealtimeNanos());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+            localLocation1.setElapsedRealtimeNanos(SystemClock.elapsedRealtimeNanos());
+        }
         this.locationManager = ((LocationManager) getSystemService(LOCATION_SERVICE));
         if (this.locationManager != null) {
-            this.locationManager.setTestProviderLocation("gps", localLocation1);
+            try {
+                this.locationManager.setTestProviderLocation("gps", localLocation1);
+            } catch (SecurityException ignored) {
+
+
+            }
         }
-        fusedLocationProviderClient.setMockLocation(localLocation1);
-        fusedLocationProviderClient.setMockMode(true);
+
+        try {
+            fusedLocationProviderClient.setMockLocation(localLocation1);
+            fusedLocationProviderClient.setMockMode(true);
+        } catch (SecurityException ignored) {
+
+        }
 
     }
 
@@ -209,36 +216,50 @@ public class Ngentot extends Service {
         localLocation1.setLongitude(lng);
 
         localLocation1.setAccuracy(randomAcc());
-        localLocation1.setSpeed(randomSpeed());
+        localLocation1.setSpeed(0.2f);
 
-        localLocation1.setBearing(1);
+        localLocation1.setBearing(randomSpeed());
         localLocation1.setAltitude(1);
-        localLocation1.setBearing(randomAcc());
-        localLocation1.setBearingAccuracyDegrees(Float.parseFloat(String.valueOf(randomAcc())));
+        localLocation1.setBearing(randomBearing());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            localLocation1.setBearingAccuracyDegrees(Float.parseFloat(String.valueOf(randomBearing())));
+        }
 
         localLocation1.setTime(System.currentTimeMillis());
 
-        localLocation1.setElapsedRealtimeNanos(SystemClock.elapsedRealtimeNanos());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+            localLocation1.setElapsedRealtimeNanos(SystemClock.elapsedRealtimeNanos());
+        }
         this.locationManager = ((LocationManager) getSystemService(LOCATION_SERVICE));
         if (this.locationManager != null) {
-            this.locationManager.setTestProviderLocation("network", localLocation1);
+            try {
+                this.locationManager.setTestProviderLocation("network", localLocation1);
+            } catch (SecurityException ignored) {
+
+            }
         }
-        fusedLocationProviderClient.setMockLocation(localLocation1);
-        fusedLocationProviderClient.setMockMode(true);
+        try {
+            fusedLocationProviderClient.setMockLocation(localLocation1);
+            fusedLocationProviderClient.setMockMode(true);
+        } catch (SecurityException ignored) {
+
+
+        }
 
     }
+
     @SuppressLint({"MissingPermission", "WrongConstant"})
     public void onDestroy() {
         super.onDestroy();
         this.startMock = false;
-
+        stopSelf();
         this.fusedLocationProviderClient.setMockMode(false);
-        this.locationManager = (LocationManager)getSystemService(LOCATION_SERVICE);
+        this.locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         try {
-             locationManager.setTestProviderEnabled("gps", false);
+            locationManager.setTestProviderEnabled("gps", false);
             if (locationManager.getProvider("gps") != null) {
                 locationManager.removeTestProvider("gps");
-                 locationManager.setTestProviderEnabled("network", false);
+                locationManager.setTestProviderEnabled("network", false);
                 if (locationManager.getProvider("network") != null) {
                     locationManager.removeTestProvider("network");
                 }
@@ -246,26 +267,27 @@ public class Ngentot extends Service {
         } catch (Exception e) {
             e.printStackTrace();
         }
-         LocationRequest locationRequest = LocationRequest.create();
+
+        LocationRequest locationRequest = LocationRequest.create();
         locationRequest.setPriority(105);
         locationRequest.setInterval(4000L);
         locationRequest.setFastestInterval(300L);
         locationRequest.setSmallestDisplacement(0.0F);
         Looper looper = Looper.myLooper();
+        Services maps = new Services(getApplicationContext());
+        maps.getLocation();
         this.fusedLocationProviderClient.requestLocationUpdates(locationRequest, this.mLocationCallback, looper);
         removeNotification();
-        startService(new Intent(this, Service.class));
     }
 
     MockLocationListener listener;
 
 
-    public abstract interface MockLocationListener
-    {
-        public abstract void onMockLocationChanged(Location paramLocation);
+    public interface MockLocationListener {
+        void onMockLocationChanged(Location paramLocation);
     }
 
-    private LocationCallback mLocationCallback = new LocationCallback() {
+    private final LocationCallback mLocationCallback = new LocationCallback() {
 
         @Override
         public void onLocationResult(LocationResult locationResult) {
@@ -276,11 +298,12 @@ public class Ngentot extends Service {
             }
         }
     };
-    private void removeNotification()
-    {
+
+    private void removeNotification() {
         stopForeground(true);
-        ((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).cancel(99999);
+        ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).cancel(99999);
     }
+
     private float randomAcc() {
         return random.nextFloat() * (25.2f - 3.0f) + 3.0f;
 
@@ -288,6 +311,10 @@ public class Ngentot extends Service {
 
     private float randomSpeed() {
         return random.nextFloat() * (1f - 0.1f) + 0.1f;
+
+    }
+    private float randomBearing() {
+        return random.nextFloat() * (360f - 0.1f) + 0.1f;
 
     }
 
@@ -300,7 +327,12 @@ public class Ngentot extends Service {
                 while (startMock) {
 
                     updateMockLocation();
-                    updateMockLocation2();
+                    SharedPreferences prefs = getSharedPreferences("HelixGPS" ,0);
+        SessionManager sesi = new SessionManager(getApplicationContext());
+        boolean net = sesi.getNetworkMode();
+                     if(net) {
+                        updateMockLocation2();
+                    }
 
                     Thread.sleep(500L);
                 }

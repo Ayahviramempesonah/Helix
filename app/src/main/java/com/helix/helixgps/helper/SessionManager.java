@@ -47,7 +47,52 @@ public class SessionManager {
         return pref.getBoolean(KEY_LOGIN, false);
     }
 
-   
+
+    public void setMock(boolean mock) {
+        editor.putBoolean("mock", mock);
+        editor.apply();
+    }
+
+    public Boolean getMock() {
+        return pref.getBoolean("mock", false);
+    }
+
+    public void setAcc(boolean acc) {
+        editor.putBoolean("acc", acc);
+        editor.apply();
+    }
+
+    public Boolean getAcc() {
+        return pref.getBoolean("acc", false);
+    }
+
+    public void setMuter(boolean muter) {
+        editor.putBoolean("muter", muter);
+        editor.apply();
+    }
+
+    public Boolean getMuter() {
+        return pref.getBoolean("muter", false);
+    }
+
+    public void setRandomLat(boolean random) {
+        editor.putBoolean("random", random);
+        editor.apply();
+    }
+
+    public Boolean getRandomLat() {
+        return pref.getBoolean("random", false);
+    }
+
+    public void setNetworkMode(boolean network) {
+        editor.putBoolean("network", network);
+        editor.apply();
+    }
+
+    public Boolean getNetworkMode() {
+        return pref.getBoolean("network", false);
+    }
+
 
     public void setId(String id) {
         editor.putString("id", id);

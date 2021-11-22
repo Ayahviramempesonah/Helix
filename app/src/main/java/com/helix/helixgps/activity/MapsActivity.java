@@ -1,21 +1,23 @@
-package com.helix.helixgps;
+package com.helix.helixgps.activity;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
+import io.michaelrocks.paranoid.Obfuscate;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.location.LocationRequest;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -23,12 +25,16 @@ import android.provider.Settings;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.View;
+import android.widget.CompoundButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
+import android.widget.Switch;
 import android.widget.TextView;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -38,22 +44,25 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
-import com.helix.helixgps.databinding.ActivityMapsBinding;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.material.textfield.TextInputEditText;
+import com.helix.helixgps.R;
+import com.helix.helixgps.activity.SettingActivity;
 import com.helix.helixgps.helper.App;
 import com.helix.helixgps.helper.HelixHelper;
 import com.helix.helixgps.helper.SessionManager;
 import com.helix.helixgps.services.Ngentot;
+import com.helix.helixgps.services.Services;
 
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.Objects;
 
 import static android.location.LocationManager.*;
+
+@Obfuscate
 
 public class MapsActivity extends FragmentActivity implements LocationListener, OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, GoogleMap.OnMapClickListener {
 
     private GoogleMap mMap;
-    private ActivityMapsBinding binding;
     private LocationRequest mLocationRequest;
     private GoogleApiClient mGoogleApiClient;
     private Location mLastLocation;
@@ -79,7 +88,7 @@ public class MapsActivity extends FragmentActivity implements LocationListener, 
     // flag for GPS status
     boolean canGetLocation = false;
 
-     double latitude; // latitude
+    double latitude; // latitude
     double longitude; // longitude
 
     // The minimum distance to change Updates in meters
@@ -89,46 +98,129 @@ public class MapsActivity extends FragmentActivity implements LocationListener, 
     private static final long MIN_TIME_BW_UPDATES = 1000 * 60 * 1; // 1 minute
     private SessionManager sesi;
     View mapView;
+    private ImageView play, pause, ic_goto, ic_config;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_maps);
-        initHelix();
-        sesi = new SessionManager(this);
-
         if (!hasPermissions(this, permissions)) {
             ActivityCompat.requestPermissions(this, permissions, 1);
         }
+
+        sesi = new SessionManager(this);
+
+        initHelix();
+        buttonUpd();
 
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         assert mapFragment != null;
-         mapView = mapFragment.getView();
+        mapView = mapFragment.getView();
         mapFragment.getMapAsync(this);
 
         locationHandler();
+
     }
 
-    void locationHandler(){
-        Handler h = new Handler();
-        int delay = 1000;
+
+    void locationHandler() {
+        final Handler h = new Handler();
+        final int delay = 1000;
         getLocation();
-        h.postDelayed(new Runnable(){
-            public void run(){
+        h.postDelayed(new Runnable() {
+            public void run() {
 
                 getmLastLocation();
+                Log.d("MapsActivity GoogleApi", String.valueOf(mGoogleApiClient.isConnected()));
+
                 h.postDelayed(this, delay);
             }
         }, delay);
     }
+
+    void buttonUpd() {
+        boolean mock = sesi.getMock();
+        runOnUiThread(() -> {
+            if (mock) {
+                startService(new Intent(getApplicationContext(), Ngentot.class));
+                play.setVisibility(View.GONE);
+                pause.setVisibility(View.VISIBLE);
+            } else {
+                getLocation();
+                play.setVisibility(View.VISIBLE);
+                pause.setVisibility(View.GONE);
+            }
+        });
+
+    }
+
+    void playMock() {
+
+        if (mGoogleApiClient.isConnected()) {
+            mGoogleApiClient.disconnect();
+        }
+
+        buttonUpd();
+        sesi.setMock(true);
+        startService(new Intent(getApplicationContext(), Ngentot.class));
+
+
+    }
+
+    void stopMock() {
+        if (!mGoogleApiClient.isConnected()) {
+            buildGoogleApiClient();
+            mGoogleApiClient.connect();
+        }
+        buttonUpd();
+        sesi.setMock(false);
+        stopService(new Intent(getApplicationContext(), Ngentot.class));
+        Services s = new Services(getApplicationContext());
+        s.getLocation();
+    }
+
+    @SuppressLint("LongLogTag")
     void initHelix() {
 
         tv_latitude = findViewById(R.id.tv_latitude);
         tv_longitude = findViewById(R.id.tv_longitude);
         tv_accuracy = findViewById(R.id.tv_accuracy);
         tv_provider = findViewById(R.id.tv_provider);
+
+        ic_goto = findViewById(R.id.ic_goto_location);
+        ic_config = findViewById(R.id.ic_config);
+        play = findViewById(R.id.play);
+        pause = findViewById(R.id.pause);
+        play.setOnClickListener(view -> {
+            playMock();
+            runOnUiThread(() -> {
+
+                play.setVisibility(View.GONE);
+                pause.setVisibility(View.VISIBLE);
+
+            });
+        });
+        pause.setOnClickListener(view -> {
+            stopMock();
+            runOnUiThread(() -> {
+
+                play.setVisibility(View.VISIBLE);
+                pause.setVisibility(View.GONE);
+
+            });
+        });
+
+        ic_goto.setOnClickListener(view -> {
+            gotoLocation();
+        });
+        ic_config.setOnClickListener(view -> {
+            startActivity(new Intent(getApplicationContext(), SettingActivity.class));
+        });
+
+
         ln1 = findViewById(R.id.stats);
 
         String now = HelixHelper.getDateTimeToday();
@@ -136,6 +228,7 @@ public class MapsActivity extends FragmentActivity implements LocationListener, 
 
         Log.d("MapsActivity NOW", now);
         Log.d("MapsActivity IMEI", imei);
+
 
     }
 
@@ -158,6 +251,91 @@ public class MapsActivity extends FragmentActivity implements LocationListener, 
     }
 
 
+    public void gotoLocation() {
+
+        final View v = getLayoutInflater().inflate(R.layout.goto_view, null, false);
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setView(v);
+        builder.setTitle("Masukan Koordinat Lokasi");
+        builder.setMessage("");
+        builder.setPositiveButton("Start Mock", (dialogInterface, i) -> {
+            TextInputEditText tv_lat = v.findViewById(R.id.et_lat);
+            TextInputEditText tv_lng = v.findViewById(R.id.et_lang);
+            String lat = Objects.requireNonNull(tv_lat.getText()).toString();
+            String longitude = Objects.requireNonNull(tv_lng.getText()).toString();
+
+            if (!lat.isEmpty() && !longitude.isEmpty()) {
+
+                sesi.setLat(lat);
+                sesi.setLong(longitude);
+                HelixHelper.toast(getApplicationContext(), "Start Mock Location\n "+lat+","+longitude);
+                playMock();
+
+            }else {
+                HelixHelper.toast(getApplicationContext(), "Kolom Koordinate Kosong");
+            }
+            dialogInterface.dismiss();
+
+        });
+        builder.setNegativeButton("Batal", (dialogInterface, i) -> dialogInterface.dismiss());
+        builder.create().show();
+    }
+
+
+    public void setIc_config() {
+
+        final View v = getLayoutInflater().inflate(R.layout.config_view, null, false);
+        Switch network_mode = v.findViewById(R.id.network_mode);
+        Switch sw_coor = v.findViewById(R.id.sw_coor);
+        Switch sw_muter = v.findViewById(R.id.sw_muter);
+        Switch sw_acc = v.findViewById(R.id.sw_acc);
+        SharedPreferences prefs = getSharedPreferences("HelixGPS" ,0);
+        boolean acc = prefs.getBoolean("is_acc", false);
+        Boolean muter = prefs.getBoolean("is_muter", false);
+        Boolean coor =  prefs.getBoolean("is_coor", false);
+        Boolean net = prefs.getBoolean("net", false);
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setView(v);
+        builder.setTitle("BSHelix Config");
+        builder.setMessage("");
+        builder.setPositiveButton("Save", (dialogInterface, i) -> {
+            sw_acc.setChecked(acc);
+            sw_acc.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                @Override
+                public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                    if (b) {
+                        prefs.edit().putBoolean("is_acc", true).apply();
+                        return;
+                    }
+                    prefs.edit().putBoolean("is_acc", false).apply();
+                }
+            });
+            if (sw_acc.isChecked()) {
+                prefs.edit().putBoolean("is_acc", true).apply();
+            }
+
+            network_mode.setChecked(net);
+            network_mode.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                @Override
+                public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                    if (b) {
+                        prefs.edit().putBoolean("net", true).apply();
+                        return;
+                    }
+                    prefs.edit().putBoolean("net", false).apply();
+                }
+            });
+            if (network_mode.isChecked()) {
+                prefs.edit().putBoolean("net", true).apply();
+            }
+            dialogInterface.dismiss();
+
+         });
+        builder.setNegativeButton("Batal", (dialogInterface, i) -> dialogInterface.dismiss());
+        builder.create().show();
+    }
     protected synchronized void buildGoogleApiClient() {
 
         mGoogleApiClient = new GoogleApiClient.Builder(this)
@@ -193,6 +371,7 @@ public class MapsActivity extends FragmentActivity implements LocationListener, 
         mMap.setMyLocationEnabled(true);
         mMap.setOnMapClickListener(this);
 
+
     }
 
     @SuppressLint("MissingPermission")
@@ -201,7 +380,7 @@ public class MapsActivity extends FragmentActivity implements LocationListener, 
             locationManager = (LocationManager) getApplicationContext()
                     .getSystemService(LOCATION_SERVICE);
             // getting GPS status
-             isGPSEnabled = locationManager
+            isGPSEnabled = locationManager
                     .isProviderEnabled(GPS_PROVIDER);
 
             // getting network status
@@ -247,9 +426,9 @@ public class MapsActivity extends FragmentActivity implements LocationListener, 
                             mLastLocation = locationManager
                                     .getLastKnownLocation(GPS_PROVIDER);
                             if (mLastLocation != null) {
-                                 latitude = mLastLocation.getLatitude();
+                                latitude = mLastLocation.getLatitude();
                                 longitude = mLastLocation.getLongitude();
-                                      onLocationChanged(mLastLocation);
+                                onLocationChanged(mLastLocation);
 
                             }
                         }
@@ -330,13 +509,15 @@ public class MapsActivity extends FragmentActivity implements LocationListener, 
 
         return mLastLocation;
     }
-    void updateStats(Location mLastLocation){
+
+    void updateStats(Location mLastLocation) {
         tv_latitude.setText(String.valueOf(mLastLocation.getLatitude()));
         tv_longitude.setText(String.valueOf(mLastLocation.getLongitude()));
         tv_accuracy.setText(String.valueOf(mLastLocation.getAccuracy()));
         tv_provider.setText(String.valueOf(mLastLocation.getProvider()));
 
     }
+
     public boolean checkLocationPermission() {
         if (ContextCompat.checkSelfPermission(this, "android.permission.ACCESS_FINE_LOCATION") != 0) {
             if (ActivityCompat.shouldShowRequestPermissionRationale(this, "android.permission.ACCESS_FINE_LOCATION")) {
@@ -368,12 +549,12 @@ public class MapsActivity extends FragmentActivity implements LocationListener, 
     @Override
     public void onMapClick(LatLng latLng) {
 
-         if (mCurrLocationMarker != null) {
+        if (mCurrLocationMarker != null) {
             mCurrLocationMarker.remove();
-         }
+        }
         sesi.setLat(String.valueOf(latLng.latitude));
         sesi.setLong(String.valueOf(latLng.longitude));
-        startService(new Intent(getApplicationContext(), Ngentot.class));
+
         MarkerOptions mark = new MarkerOptions();
         mark.position(latLng);
         Log.d("MapsOnClick", latLng.toString());
@@ -382,7 +563,6 @@ public class MapsActivity extends FragmentActivity implements LocationListener, 
         mark.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE));
         mCurrLocationMarker = mMap.addMarker(mark);
         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latLng.latitude, latLng.longitude), 16f));
-
 
 
     }
@@ -400,28 +580,55 @@ public class MapsActivity extends FragmentActivity implements LocationListener, 
 
     @Override
     public void onLocationChanged(@NonNull Location location) {
-            latitude = location.getLatitude();
-            longitude = location.getLongitude();
-           // mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), 16f));
-            mLastLocation = location;
-            runOnUiThread(() -> updateStats(mLastLocation));
-
+        latitude = location.getLatitude();
+        longitude = location.getLongitude();
+        // mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), 16f));
+        mLastLocation = location;
+        runOnUiThread(() -> updateStats(mLastLocation));
 
 
     }
 
     @Override
-    public void onFlushComplete(int requestCode) {
+    public void onStatusChanged(String s, int i, Bundle bundle) {
+        Log.d("onStatusChanged", s);
 
     }
+
 
     @Override
     public void onProviderEnabled(@NonNull String provider) {
+        Log.d("onProviderEnabled", provider);
 
     }
 
     @Override
     public void onProviderDisabled(@NonNull String provider) {
+        Log.d("onProviderDisabled", provider);
 
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        buttonUpd();
+    }
+
+    @Override
+    public void onRestart() {
+        super.onRestart();
+        buttonUpd();
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        buttonUpd();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        buttonUpd();
     }
 }
